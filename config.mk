@@ -1,39 +1,36 @@
-# dwm version
-VERSION = 6.5
+_VERSION = 0.8-dev
+VERSION  = `git describe --tags --dirty 2>/dev/null || echo $(_VERSION)`
 
-# Customize below to fit your system
+PKG_CONFIG = pkg-config
 
 # paths
 PREFIX = /usr/local
-MANPREFIX = ${PREFIX}/share/man
+MANDIR = $(PREFIX)/share/man
+DATADIR = $(PREFIX)/share
 
-X11INC = /usr/X11R6/include
-X11LIB = /usr/X11R6/lib
+WLR_INCS = `$(PKG_CONFIG) --cflags wlroots-0.19`
+WLR_LIBS = `$(PKG_CONFIG) --libs wlroots-0.19`
 
-# Xinerama, comment if you don't want it
-XINERAMALIBS  = -lXinerama
-XINERAMAFLAGS = -DXINERAMA
+# Allow using an alternative wlroots installation
+# This has to have all the includes required by wlroots, e.g:
+# Assuming wlroots git repo is "${PWD}/wlroots" and you only ran "meson setup build && ninja -C build"
+#WLR_INCS = -I/usr/include/pixman-1 -I/usr/include/elogind -I/usr/include/libdrm \
+#	-I$(PWD)/wlroots/include
+# Set -rpath to avoid using the wrong library.
+#WLR_LIBS = -Wl,-rpath,$(PWD)/wlroots/build -L$(PWD)/wlroots/build -lwlroots-0.19
 
-# freetype
-FREETYPELIBS = -lfontconfig -lXft
-FREETYPEINC = /usr/include/freetype2
-# OpenBSD (uncomment)
-#FREETYPEINC = ${X11INC}/freetype2
-#MANPREFIX = ${PREFIX}/man
+# Assuming you ran "meson setup --prefix ${PWD}/0.19 build && ninja -C build install"
+#WLR_INCS = -I/usr/include/pixman-1 -I/usr/include/elogind -I/usr/include/libdrm \
+#	-I$(PWD)/wlroots/0.19/include/wlroots-0.19
+#WLR_LIBS = -Wl,-rpath,$(PWD)/wlroots/0.19/lib64 -L$(PWD)/wlroots/0.19/lib64 -lwlroots-0.19
 
-# includes and libs
-INCS = -I${X11INC} -I${FREETYPEINC}
-LIBS = -L${X11LIB} -lX11 ${XINERAMALIBS} ${FREETYPELIBS}
+#XWAYLAND =
+#XLIBS =
+# Uncomment to build XWayland support
+XWAYLAND = -DXWAYLAND
+XLIBS = xcb xcb-icccm
 
-# flags
-CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_XOPEN_SOURCE=700L -DVERSION=\"${VERSION}\" ${XINERAMAFLAGS}
-#CFLAGS   = -g -std=c99 -pedantic -Wall -O0 ${INCS} ${CPPFLAGS}
-CFLAGS   = -std=c99 -pedantic -Wall -Wno-deprecated-declarations -Os ${INCS} ${CPPFLAGS}
-LDFLAGS  = ${LIBS}
-
-# Solaris
-#CFLAGS = -fast ${INCS} -DVERSION=\"${VERSION}\"
-#LDFLAGS = ${LIBS}
-
-# compiler and linker
+# dwl itself only uses C99 features, but wlroots' headers use anonymous unions (C11).
+# To avoid warnings about them, we do not use -std=c99 and instead of using the
+# gmake default 'CC=c99', we use cc.
 CC = cc
