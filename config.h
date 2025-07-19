@@ -15,7 +15,7 @@ static const float urgentcolor[]           = COLOR(0xff0000ff);
 static const float fullscreen_bg[]         = {0.0f, 0.0f, 0.0f, 1.0f}; /* You can also use glsl colors */
 
 /* tagging - TAGCOUNT must be no greater than 31 */
-#define TAGCOUNT (4)
+#define TAGCOUNT (2)
 
 /* logging */
 static int log_level = WLR_ERROR;
@@ -138,8 +138,6 @@ static const Key keys[] = {
 	{ MODKEY,					 XKB_KEY_greater,    tagmon,         {.i = WLR_DIRECTION_RIGHT} },
 	TAGKEYS(          			 XKB_KEY_1,					            0),
 	TAGKEYS(          			 XKB_KEY_2,                      		1),
-	TAGKEYS(          			 XKB_KEY_3,                				2),
-	TAGKEYS(          			 XKB_KEY_4,                     		3),
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Q,          quit,           {0} },
 
 #define CHVT(n) { WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_XF86Switch_VT_##n, chvt, {.ui = (n)} }
