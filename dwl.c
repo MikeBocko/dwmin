@@ -248,9 +248,7 @@ static void buttonpress(struct wl_listener *listener, void *data);
 static void chvt(const Arg *arg);
 static void checkidleinhibitor(struct wlr_surface *exclude);
 static void cleanup(void);
-static void cleanupmon(struct wl_listener *listener, void *data);
 static void cleanuplisteners(void);
-static void closemon(Monitor *m);
 static void commitlayersurfacenotify(struct wl_listener *listener, void *data);
 static void commitnotify(struct wl_listener *listener, void *data);
 static void commitpopup(struct wl_listener *listener, void *data);
@@ -702,34 +700,6 @@ cleanup(void)
 }
 
 void
-cleanupmon(struct wl_listener *listener, void *data)
-{
-	Monitor *m = wl_container_of(listener, m, destroy);
-	LayerSurface *l, *tmp;
-	size_t i;
-
-	/* m->layers[i] are intentionally not unlinked */
-	for (i = 0; i < LENGTH(m->layers); i++) {
-		wl_list_for_each_safe(l, tmp, &m->layers[i], link)
-			wlr_layer_surface_v1_destroy(l->layer_surface);
-	}
-
-	wl_list_remove(&m->destroy.link);
-	wl_list_remove(&m->frame.link);
-	wl_list_remove(&m->link);
-	wl_list_remove(&m->request_state.link);
-	if (m->lock_surface)
-		destroylocksurface(&m->destroy_lock_surface, NULL);
-	m->wlr_output->data = NULL;
-	wlr_output_layout_remove(output_layout, m->wlr_output);
-	wlr_scene_output_destroy(m->scene_output);
-
-	closemon(m);
-	wlr_scene_node_destroy(&m->fullscreen_bg->node);
-	free(m);
-}
-
-void
 cleanuplisteners(void)
 {
 	wl_list_remove(&cursor_axis.link);
@@ -761,35 +731,6 @@ cleanuplisteners(void)
 	wl_list_remove(&new_xwayland_surface.link);
 	wl_list_remove(&xwayland_ready.link);
 #endif
-}
-
-void
-closemon(Monitor *m)
-{
-	/* update selmon if needed and
-	 * move closed monitor's clients to the focused one */
-	Client *c;
-	int i = 0, nmons = wl_list_length(&mons);
-	if (!nmons) {
-		selmon = NULL;
-	} else if (m == selmon) {
-		do /* don't switch to disabled mons */
-			selmon = wl_container_of(mons.next, selmon, link);
-		while (!selmon->wlr_output->enabled && i++ < nmons);
-
-		if (!selmon->wlr_output->enabled)
-			selmon = NULL;
-	}
-
-	wl_list_for_each(c, &clients, link) {
-		if (c->isfloating && c->geom.x > m->m.width)
-			resize(c, (struct wlr_box){.x = c->geom.x - m->w.width, .y = c->geom.y,
-					.width = c->geom.width, .height = c->geom.height}, 0);
-		if (c->mon == m)
-			setmon(c, selmon, c->tags);
-	}
-	focusclient(focustop(selmon), 1);
-	
 }
 
 void
@@ -1056,7 +997,6 @@ createmon(struct wl_listener *listener, void *data)
 
 	/* Set up event listeners */
 	LISTEN(&wlr_output->events.frame, &m->frame, rendermon);
-	LISTEN(&wlr_output->events.destroy, &m->destroy, cleanupmon);
 	LISTEN(&wlr_output->events.request_state, &m->request_state, requestmonstate);
 
 	wlr_output_state_set_enabled(&state, 1);
@@ -2658,7 +2598,6 @@ updatemons(struct wl_listener *listener, void *data)
 		config_head->state.enabled = 0;
 		/* Remove this output from the layout to avoid cursor enter inside it */
 		wlr_output_layout_remove(output_layout, m->wlr_output);
-		closemon(m);
 		m->m = m->w = (struct wlr_box){0};
 	}
 	/* Insert outputs that need to */
