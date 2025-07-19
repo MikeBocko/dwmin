@@ -1,5 +1,4 @@
-_VERSION = 0.8-dev
-VERSION  = `git describe --tags --dirty 2>/dev/null || echo $(_VERSION)`
+VERSION  = `git describe --tags --dirty 2>/dev/null || echo 0.8-dev`
 
 PKG_CONFIG = pkg-config
 
@@ -36,12 +35,11 @@ DWLCFLAGS = `$(PKG_CONFIG) --cflags $(PKGS)` $(WLR_INCS) $(DWLCPPFLAGS) $(DWLDEV
 LDLIBS    = `$(PKG_CONFIG) --libs $(PKGS)` $(WLR_LIBS) -lm $(LIBS)
 
 all: dwl
-dwl: dwl.o util.o
-	$(CC) dwl.o util.o $(DWLCFLAGS) $(LDFLAGS) $(LDLIBS) -o $@
+dwl: dwl.o
+	$(CC) dwl.o $(DWLCFLAGS) $(LDFLAGS) $(LDLIBS) -o $@
 dwl.o: dwl.c client.h config.h \
 	pointer-constraints-unstable-v1-protocol.h wlr-layer-shell-unstable-v1-protocol.h \
 	xdg-shell-protocol.h
-util.o: util.c util.h
 
 # wayland-scanner is a tool which generates C headers and rigging for Wayland
 # protocols, which are specified in XML. wlroots requires you to rig these up
@@ -61,13 +59,6 @@ xdg-shell-protocol.h:
 
 clean:
 	rm -f dwl *.o *-protocol.h
-
-dist: clean
-	mkdir -p dwl-$(VERSION)
-		protocols dwl.1 dwl.c util.c util.h \
-		dwl-$(VERSION)
-	tar -caf dwl-$(VERSION).tar.gz dwl-$(VERSION)
-	rm -rf dwl-$(VERSION)
 
 .SUFFIXES: .c .o
 .c.o:
