@@ -134,12 +134,12 @@ static const Key keys[] = {
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_parenright, tag,            {.ui = ~0} },
 	{ MODKEY,                    XKB_KEY_comma,      focusmon,       {.i = WLR_DIRECTION_LEFT} },
 	{ MODKEY,                    XKB_KEY_period,     focusmon,       {.i = WLR_DIRECTION_RIGHT} },
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_less,       tagmon,         {.i = WLR_DIRECTION_LEFT} },
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_greater,    tagmon,         {.i = WLR_DIRECTION_RIGHT} },
-	TAGKEYS(          XKB_KEY_1,					                 	0),
-	TAGKEYS(          XKB_KEY_2,                      					1),
-	TAGKEYS(          XKB_KEY_3,                						2),
-	TAGKEYS(          XKB_KEY_4,                     					3),
+	{ MODKEY,					 XKB_KEY_less,       tagmon,         {.i = WLR_DIRECTION_LEFT} },
+	{ MODKEY,					 XKB_KEY_greater,    tagmon,         {.i = WLR_DIRECTION_RIGHT} },
+	TAGKEYS(          			 XKB_KEY_1,					            0),
+	TAGKEYS(          			 XKB_KEY_2,                      		1),
+	TAGKEYS(          			 XKB_KEY_3,                				2),
+	TAGKEYS(          			 XKB_KEY_4,                     		3),
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Q,          quit,           {0} },
 
 #define CHVT(n) { WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_XF86Switch_VT_##n, chvt, {.ui = (n)} }
