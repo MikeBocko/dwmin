@@ -281,12 +281,10 @@ static void destroykeyboardgroup(struct wl_listener *listener, void *data);
 static Monitor *dirtomon(enum wlr_direction dir);
 static void focusclient(Client *c, int lift);
 static void focusmon(const Arg *arg);
-static void focusstack(const Arg *arg);
 static Client *focustop(Monitor *m);
 static void fullscreennotify(struct wl_listener *listener, void *data);
 static void gpureset(struct wl_listener *listener, void *data);
 static void handlesig(int signo);
-static void incnmaster(const Arg *arg);
 static void inputdevice(struct wl_listener *listener, void *data);
 static int keybinding(uint32_t mods, xkb_keysym_t sym);
 static void keypress(struct wl_listener *listener, void *data);
@@ -1464,32 +1462,6 @@ focusmon(const Arg *arg)
 	focusclient(focustop(selmon), 1);
 }
 
-void
-focusstack(const Arg *arg)
-{
-	/* Focus the next or previous client (in tiling order) on selmon */
-	Client *c, *sel = focustop(selmon);
-	if (!sel || (sel->isfullscreen && !client_has_children(sel)))
-		return;
-	if (arg->i > 0) {
-		wl_list_for_each(c, &sel->link, link) {
-			if (&c->link == &clients)
-				continue; /* wrap past the sentinel node */
-			if (VISIBLEON(c, selmon))
-				break; /* found it */
-		}
-	} else {
-		wl_list_for_each_reverse(c, &sel->link, link) {
-			if (&c->link == &clients)
-				continue; /* wrap past the sentinel node */
-			if (VISIBLEON(c, selmon))
-				break; /* found it */
-		}
-	}
-	/* If only one client is visible on selmon, then c == sel */
-	focusclient(c, 1);
-}
-
 /* We probably should change the name of this: it sounds like it
  * will focus the topmost client of this mon, when actually will
  * only return that client */
@@ -1543,15 +1515,6 @@ handlesig(int signo)
 		while (waitpid(-1, NULL, WNOHANG) > 0);
 	else if (signo == SIGINT || signo == SIGTERM)
 		quit(NULL);
-}
-
-void
-incnmaster(const Arg *arg)
-{
-	if (!arg || !selmon)
-		return;
-	selmon->nmaster = MAX(selmon->nmaster + arg->i, 0);
-	arrange(selmon);
 }
 
 void
