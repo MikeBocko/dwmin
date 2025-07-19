@@ -1,7 +1,26 @@
+_VERSION = 0.8-dev
+VERSION  = `git describe --tags --dirty 2>/dev/null || echo $(_VERSION)`
+
+PKG_CONFIG = pkg-config
+
+# paths
+PREFIX = /usr/local
+MANDIR = $(PREFIX)/share/man
+DATADIR = $(PREFIX)/share
+
+WLR_INCS = `$(PKG_CONFIG) --cflags wlroots-0.19`
+WLR_LIBS = `$(PKG_CONFIG) --libs wlroots-0.19`
+
+# Uncomment to build XWayland support
+XWAYLAND = -DXWAYLAND
+XLIBS = xcb xcb-icccm
+
+
+
+CC = cc
+
 .POSIX:
 .SUFFIXES:
-
-include config.mk
 
 # flags for compiling
 DWLCPPFLAGS = -I. -DWLR_USE_UNSTABLE -D_POSIX_C_SOURCE=200809L \
@@ -19,7 +38,7 @@ LDLIBS    = `$(PKG_CONFIG) --libs $(PKGS)` $(WLR_LIBS) -lm $(LIBS)
 all: dwl
 dwl: dwl.o util.o
 	$(CC) dwl.o util.o $(DWLCFLAGS) $(LDFLAGS) $(LDLIBS) -o $@
-dwl.o: dwl.c client.h config.h config.mk \
+dwl.o: dwl.c client.h config.h \
 	pointer-constraints-unstable-v1-protocol.h wlr-layer-shell-unstable-v1-protocol.h \
 	wlr-output-power-management-unstable-v1-protocol.h xdg-shell-protocol.h
 util.o: util.c util.h
@@ -48,7 +67,7 @@ clean:
 
 dist: clean
 	mkdir -p dwl-$(VERSION)
-		config.mk protocols dwl.1 dwl.c util.c util.h dwl.desktop \
+		protocols dwl.1 dwl.c util.c util.h dwl.desktop \
 		dwl-$(VERSION)
 	tar -caf dwl-$(VERSION).tar.gz dwl-$(VERSION)
 	rm -rf dwl-$(VERSION)
