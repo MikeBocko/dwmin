@@ -302,7 +302,6 @@ static void outputmgrapplyortest(struct wlr_output_configuration_v1 *config, int
 static void outputmgrtest(struct wl_listener *listener, void *data);
 static void pointerfocus(Client *c, struct wlr_surface *surface,
 		double sx, double sy, uint32_t time);
-static void powermgrsetmode(struct wl_listener *listener, void *data);
 static void quit(const Arg *arg);
 static void rendermon(struct wl_listener *listener, void *data);
 static void requestdecorationmode(struct wl_listener *listener, void *data);
@@ -360,7 +359,6 @@ static struct wlr_idle_notifier_v1 *idle_notifier;
 static struct wlr_idle_inhibit_manager_v1 *idle_inhibit_mgr;
 static struct wlr_layer_shell_v1 *layer_shell;
 static struct wlr_output_manager_v1 *output_mgr;
-static struct wlr_output_power_manager_v1 *power_mgr;
 
 static struct wlr_pointer_constraints_v1 *pointer_constraints;
 static struct wlr_relative_pointer_manager_v1 *relative_pointer_mgr;
@@ -403,7 +401,6 @@ static struct wl_listener new_xdg_decoration = {.notify = createdecoration};
 static struct wl_listener new_layer_surface = {.notify = createlayersurface};
 static struct wl_listener output_mgr_apply = {.notify = outputmgrapply};
 static struct wl_listener output_mgr_test = {.notify = outputmgrtest};
-static struct wl_listener output_power_mgr_set_mode = {.notify = powermgrsetmode};
 static struct wl_listener request_activate = {.notify = urgent};
 static struct wl_listener request_cursor = {.notify = setcursor};
 static struct wl_listener request_set_psel = {.notify = setpsel};
@@ -719,7 +716,6 @@ cleanuplisteners(void)
 	wl_list_remove(&new_layer_surface.link);
 	wl_list_remove(&output_mgr_apply.link);
 	wl_list_remove(&output_mgr_test.link);
-	wl_list_remove(&output_power_mgr_set_mode.link);
 	wl_list_remove(&request_activate.link);
 	wl_list_remove(&request_cursor.link);
 	wl_list_remove(&request_set_psel.link);
@@ -1946,24 +1942,6 @@ pointerfocus(Client *c, struct wlr_surface *surface, double sx, double sy,
 }
 
 void
-powermgrsetmode(struct wl_listener *listener, void *data)
-{
-	struct wlr_output_power_v1_set_mode_event *event = data;
-	struct wlr_output_state state = {0};
-	Monitor *m = event->output->data;
-
-	if (!m)
-		return;
-
-	m->gamma_lut_changed = 1; /* Reapply gamma LUT when re-enabling the ouput */
-	wlr_output_state_set_enabled(&state, event->mode);
-	wlr_output_commit_state(m->wlr_output, &state);
-
-	m->asleep = !event->mode;
-	updatemons(NULL, NULL);
-}
-
-void
 quit(const Arg *arg)
 {
 	wl_display_terminate(dpy);
@@ -2308,9 +2286,6 @@ setup(void)
 	wl_signal_add(&activation->events.request_activate, &request_activate);
 
 	wlr_scene_set_gamma_control_manager_v1(scene, wlr_gamma_control_manager_v1_create(dpy));
-
-	power_mgr = wlr_output_power_manager_v1_create(dpy);
-	wl_signal_add(&power_mgr->events.set_mode, &output_power_mgr_set_mode);
 
 	/* Creates an output layout, which is a wlroots utility for working with an
 	 * arrangement of screens in a physical layout. */
