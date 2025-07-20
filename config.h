@@ -20,13 +20,6 @@ static const float fullscreen_bg[]         = {0.0f, 0.0f, 0.0f, 1.0f}; /* You ca
 /* logging */
 static int log_level = WLR_ERROR;
 
-/* NOTE: ALWAYS keep a rule declared even if you don't use rules (e.g leave at least one example) */
-static const Rule rules[] = {
-	/* app_id             title       tags mask     isfloating   monitor */
-	/* examples: */
-	{ "Gimp_EXAMPLE",     NULL,       0,            1,           -1 }, /* Start on currently visible tags floating, not tiled */
-};
-
 /* layout(s) */
 static const Layout layouts[] = {
 	/* symbol     arrange function */

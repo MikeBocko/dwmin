@@ -254,14 +254,6 @@ typedef struct {
 } PointerConstraint;
 
 typedef struct {
-	const char *id;
-	const char *title;
-	uint32_t tags;
-	int isfloating;
-	int monitor;
-} Rule;
-
-typedef struct {
 	struct wlr_scene_tree *scene;
 
 	struct wlr_session_lock_v1 *lock;
@@ -272,7 +264,6 @@ typedef struct {
 
 /* function declarations */
 static void applybounds(Client *c, struct wlr_box *bbox);
-static void applyrules(Client *c);
 static void arrange(Monitor *m);
 static void arrangelayer(Monitor *m, struct wl_list *list,
 		struct wlr_box *usable_area, int exclusive);
@@ -472,36 +463,6 @@ applybounds(Client *c, struct wlr_box *bbox)
 		c->geom.x = bbox->x;
 	if (c->geom.y + c->geom.height <= bbox->y)
 		c->geom.y = bbox->y;
-}
-
-void
-applyrules(Client *c)
-{
-	/* rule matching */
-	const char *appid, *title;
-	uint32_t newtags = 0;
-	int i;
-	const Rule *r;
-	Monitor *mon = selmon, *m;
-
-	appid = client_get_appid(c);
-	title = client_get_title(c);
-
-	for (r = rules; r < END(rules); r++) {
-		if ((!r->title || strstr(title, r->title))
-				&& (!r->id || strstr(appid, r->id))) {
-			c->isfloating = r->isfloating;
-			newtags |= r->tags;
-			i = 0;
-			wl_list_for_each(m, &mons, link) {
-				if (r->monitor == i++)
-					mon = m;
-			}
-		}
-	}
-
-	c->isfloating |= client_is_float_type(c);
-	setmon(c, mon, newtags);
 }
 
 void
@@ -781,7 +742,7 @@ commitnotify(struct wl_listener *listener, void *data)
 		 * a different monitor based on its title, this will likely select
 		 * a wrong monitor.
 		 */
-		applyrules(c);
+		setmon(c, selmon, 0);
 		if (c->mon) {
 			client_set_scale(client_surface(c), c->mon->wlr_output->scale);
 		}
@@ -1649,7 +1610,7 @@ mapnotify(struct wl_listener *listener, void *data)
 		c->isfloating = 1;
 		setmon(c, p->mon, p->tags);
 	} else {
-		applyrules(c);
+		setmon(c, selmon, 0);
 	}
 	
 
