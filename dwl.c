@@ -2,8 +2,6 @@
  * See LICENSE file for copyright and license details.
  */
 
-#include <stdio.h>
-
 #include <linux/input-event-codes.h>
 #include <sys/wait.h>
 #include <unistd.h>
