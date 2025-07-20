@@ -18,8 +18,6 @@
 #include <wlr/types/wlr_export_dmabuf_v1.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_gamma_control_v1.h>
-#include <wlr/types/wlr_idle_inhibit_v1.h>
-#include <wlr/types/wlr_idle_notify_v1.h>
 #include <wlr/types/wlr_input_device.h>
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_keyboard_group.h>
@@ -282,14 +280,12 @@ static void arrangelayers(Monitor *m);
 static void axisnotify(struct wl_listener *listener, void *data);
 static void buttonpress(struct wl_listener *listener, void *data);
 static void chvt(const Arg *arg);
-static void checkidleinhibitor(struct wlr_surface *exclude);
 static void cleanup(void);
 static void cleanuplisteners(void);
 static void commitlayersurfacenotify(struct wl_listener *listener, void *data);
 static void commitnotify(struct wl_listener *listener, void *data);
 static void commitpopup(struct wl_listener *listener, void *data);
 static void createdecoration(struct wl_listener *listener, void *data);
-static void createidleinhibitor(struct wl_listener *listener, void *data);
 static void createkeyboard(struct wlr_keyboard *keyboard);
 static KeyboardGroup *createkeyboardgroup(void);
 static void createlayersurface(struct wl_listener *listener, void *data);
@@ -304,7 +300,6 @@ static void cursorframe(struct wl_listener *listener, void *data);
 static void cursorwarptohint(void);
 static void destroydecoration(struct wl_listener *listener, void *data);
 static void destroydragicon(struct wl_listener *listener, void *data);
-static void destroyidleinhibitor(struct wl_listener *listener, void *data);
 static void destroylayersurfacenotify(struct wl_listener *listener, void *data);
 static void destroylock(SessionLock *lock, int unlocked);
 static void destroylocksurface(struct wl_listener *listener, void *data);
@@ -391,8 +386,6 @@ static struct wlr_xdg_activation_v1 *activation;
 static struct wlr_xdg_decoration_manager_v1 *xdg_decoration_mgr;
 static struct wl_list clients; /* tiling order */
 static struct wl_list fstack;  /* focus order */
-static struct wlr_idle_notifier_v1 *idle_notifier;
-static struct wlr_idle_inhibit_manager_v1 *idle_inhibit_mgr;
 static struct wlr_layer_shell_v1 *layer_shell;
 static struct wlr_output_manager_v1 *output_mgr;
 
@@ -427,7 +420,6 @@ static struct wl_listener cursor_motion = {.notify = motionrelative};
 static struct wl_listener cursor_motion_absolute = {.notify = motionabsolute};
 static struct wl_listener gpu_reset = {.notify = gpureset};
 static struct wl_listener layout_change = {.notify = updatemons};
-static struct wl_listener new_idle_inhibitor = {.notify = createidleinhibitor};
 static struct wl_listener new_input_device = {.notify = inputdevice};
 static struct wl_listener new_pointer_constraint = {.notify = createpointerconstraint};
 static struct wl_listener new_output = {.notify = createmon};
@@ -549,7 +541,6 @@ arrange(Monitor *m)
 	if (m->lt[m->sellt]->arrange)
 		m->lt[m->sellt]->arrange(m);
 	motionnotify(0, NULL, 0, 0, 0, 0);
-	checkidleinhibitor(NULL);
 }
 
 void
@@ -618,7 +609,6 @@ axisnotify(struct wl_listener *listener, void *data)
 	/* This event is forwarded by the cursor when a pointer emits an axis event,
 	 * for example when you move the scroll wheel. */
 	struct wlr_pointer_axis_event *event = data;
-	wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
 	/* TODO: allow usage of scroll wheel for mousebindings, it can be implemented
 	 * by checking the event's orientation and the delta of the event */
 	/* Notify the client with pointer focus of the axis event. */
@@ -635,8 +625,6 @@ buttonpress(struct wl_listener *listener, void *data)
 	uint32_t mods;
 	Client *c;
 	const Button *b;
-
-	wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
 
 	switch (event->state) {
 	case WL_POINTER_BUTTON_STATE_PRESSED:
@@ -688,24 +676,6 @@ chvt(const Arg *arg)
 }
 
 void
-checkidleinhibitor(struct wlr_surface *exclude)
-{
-	int inhibited = 0, unused_lx, unused_ly;
-	struct wlr_idle_inhibitor_v1 *inhibitor;
-	wl_list_for_each(inhibitor, &idle_inhibit_mgr->inhibitors, link) {
-		struct wlr_surface *surface = wlr_surface_get_root_surface(inhibitor->surface);
-		struct wlr_scene_tree *tree = surface->data;
-		if (exclude != surface && (bypass_surface_visibility || (!tree
-				|| wlr_scene_node_coords(&tree->node, &unused_lx, &unused_ly)))) {
-			inhibited = 1;
-			break;
-		}
-	}
-
-	wlr_idle_notifier_v1_set_inhibited(idle_notifier, inhibited);
-}
-
-void
 cleanup(void)
 {
 	cleanuplisteners();
@@ -741,7 +711,6 @@ cleanuplisteners(void)
 	wl_list_remove(&cursor_motion.link);
 	wl_list_remove(&cursor_motion_absolute.link);
 	wl_list_remove(&gpu_reset.link);
-	wl_list_remove(&new_idle_inhibitor.link);
 	wl_list_remove(&layout_change.link);
 	wl_list_remove(&new_input_device.link);
 	wl_list_remove(&new_pointer_constraint.link);
@@ -874,15 +843,6 @@ createdecoration(struct wl_listener *listener, void *data)
 	LISTEN(&deco->events.destroy, &c->destroy_decoration, destroydecoration);
 
 	requestdecorationmode(&c->set_decoration_mode, deco);
-}
-
-void
-createidleinhibitor(struct wl_listener *listener, void *data)
-{
-	struct wlr_idle_inhibitor_v1 *idle_inhibitor = data;
-	LISTEN_STATIC(&idle_inhibitor->events.destroy, destroyidleinhibitor);
-
-	checkidleinhibitor(NULL);
 }
 
 void
@@ -1199,16 +1159,6 @@ destroydragicon(struct wl_listener *listener, void *data)
 	/* Focus enter isn't sent during drag, so refocus the focused node. */
 	focusclient(focustop(selmon), 1);
 	motionnotify(0, NULL, 0, 0, 0, 0);
-	wl_list_remove(&listener->link);
-	free(listener);
-}
-
-void
-destroyidleinhibitor(struct wl_listener *listener, void *data)
-{
-	/* `data` is the wlr_surface of the idle inhibitor being destroyed,
-	 * at this point the idle inhibitor is still in the list of the manager */
-	checkidleinhibitor(wlr_surface_get_root_surface(data));
 	wl_list_remove(&listener->link);
 	free(listener);
 }
@@ -1554,8 +1504,6 @@ keypress(struct wl_listener *listener, void *data)
 	int handled = 0;
 	uint32_t mods = wlr_keyboard_get_modifiers(&group->wlr_group->keyboard);
 
-	wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
-
 	/* On _press_ if there is no active screen locker,
 	 * attempt to process a compositor keybinding. */
 	if (!locked && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
@@ -1799,7 +1747,6 @@ motionnotify(uint32_t time, struct wlr_input_device *device, double dx, double d
 		}
 
 		wlr_cursor_move(cursor, device, dx, dy);
-		wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
 
 		/* Update selmon (even while dragging a window) */
 		if (sloppyfocus)
@@ -2350,11 +2297,6 @@ setup(void)
 
 	layer_shell = wlr_layer_shell_v1_create(dpy, 3);
 	wl_signal_add(&layer_shell->events.new_surface, &new_layer_surface);
-
-	idle_notifier = wlr_idle_notifier_v1_create(dpy);
-
-	idle_inhibit_mgr = wlr_idle_inhibit_v1_create(dpy);
-	wl_signal_add(&idle_inhibit_mgr->events.new_inhibitor, &new_idle_inhibitor);
 
 	session_lock_mgr = wlr_session_lock_manager_v1_create(dpy);
 	wl_signal_add(&session_lock_mgr->events.new_lock, &new_session_lock);
