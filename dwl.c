@@ -1,6 +1,9 @@
 /*
  * See LICENSE file for copyright and license details.
  */
+
+#include <stdio.h>
+
 #include <linux/input-event-codes.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -237,16 +240,6 @@ struct Monitor {
 	char ltsymbol[16];
 	int asleep;
 };
-
-typedef struct {
-	const char *name;
-	float mfact;
-	int nmaster;
-	float scale;
-	const Layout *lt;
-	enum wl_output_transform rr;
-	int x, y;
-} MonitorRule;
 
 typedef struct {
 	struct wlr_pointer_constraint_v1 *constraint;
@@ -910,7 +903,6 @@ createmon(struct wl_listener *listener, void *data)
 	/* This event is raised by the backend when a new output (aka a display or
 	 * monitor) becomes available. */
 	struct wlr_output *wlr_output = data;
-	const MonitorRule *r;
 	size_t i;
 	struct wlr_output_state state;
 	Monitor *m;
@@ -927,20 +919,15 @@ createmon(struct wl_listener *listener, void *data)
 	wlr_output_state_init(&state);
 	/* Initialize monitor state using configured rules */
 	m->tagset[0] = m->tagset[1] = 1;
-	for (r = monrules; r < END(monrules); r++) {
-		if (!r->name || strstr(wlr_output->name, r->name)) {
-			m->m.x = r->x;
-			m->m.y = r->y;
-			m->mfact = r->mfact;
-			m->nmaster = r->nmaster;
-			m->lt[0] = r->lt;
-			m->lt[1] = &layouts[LENGTH(layouts) > 1 && r->lt != &layouts[1]];
-			strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, LENGTH(m->ltsymbol));
-			wlr_output_state_set_scale(&state, r->scale);
-			wlr_output_state_set_transform(&state, r->rr);
-			break;
-		}
-	}
+	m->m.x = -1;
+	m->m.y = -1;
+	m->mfact = 0.55f;
+	m->nmaster = 1;
+	m->lt[0] = &layouts[0];
+	m->lt[1] = &layouts[LENGTH(layouts) > 1 && &layouts[0] != &layouts[1]];
+	strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, LENGTH(m->ltsymbol));
+	wlr_output_state_set_scale(&state, 1);
+	wlr_output_state_set_transform(&state, WL_OUTPUT_TRANSFORM_NORMAL);
 
 	/* The mode is a tuple of (width, height, refresh rate), and each
 	 * monitor supports only a specific set of modes. We just pick the
