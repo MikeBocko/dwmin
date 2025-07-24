@@ -121,5 +121,5 @@ static const Key keys[] = {
 };
 
 static const Button buttons[] = {
-	{ MODKEY, BTN_LEFT,   moveresize,     {.ui = CurMove} },
+	{ MODKEY, BTN_LEFT,   move,     {.ui = CurMove} },
 };

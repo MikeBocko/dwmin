@@ -309,7 +309,7 @@ static void motionabsolute(struct wl_listener *listener, void *data);
 static void motionnotify(uint32_t time, struct wlr_input_device *device, double sx,
 		double sy, double sx_unaccel, double sy_unaccel);
 static void motionrelative(struct wl_listener *listener, void *data);
-static void moveresize(const Arg *arg);
+static void move(const Arg *arg);
 static void outputmgrapply(struct wl_listener *listener, void *data);
 static void outputmgrapplyortest(struct wlr_output_configuration_v1 *config, int test);
 static void outputmgrtest(struct wl_listener *listener, void *data);
@@ -1735,7 +1735,7 @@ motionrelative(struct wl_listener *listener, void *data)
 }
 
 void
-moveresize(const Arg *arg)
+move(const Arg *arg)
 {
 	if (cursor_mode != CurNormal && cursor_mode != CurPressed)
 		return;
@@ -1744,13 +1744,10 @@ moveresize(const Arg *arg)
 		return;
 
 	/* Float the window and tell motionnotify to grab it */
-	switch (cursor_mode = arg->ui) {
-	case CurMove:
-		grabcx = (int)round(cursor->x) - grabc->geom.x;
-		grabcy = (int)round(cursor->y) - grabc->geom.y;
-		wlr_cursor_set_xcursor(cursor, cursor_mgr, "all-scroll");
-		break;
-	}
+	cursor_mode = arg->ui;
+	grabcx = (int)round(cursor->x) - grabc->geom.x;
+	grabcy = (int)round(cursor->y) - grabc->geom.y;
+	wlr_cursor_set_xcursor(cursor, cursor_mgr, "all-scroll");
 }
 
 void
